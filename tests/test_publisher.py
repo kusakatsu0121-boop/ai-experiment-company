@@ -1,8 +1,11 @@
+import io
 import pathlib
+import urllib.error
+from unittest.mock import patch
 import sys
 import unittest
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-from publish_bluesky import validate_text, rkey_for, publish, COMPANY_HANDLE
+from publish_bluesky import validate_text, rkey_for, publish, get_record, COMPANY_HANDLE
 
 
 class PublisherTests(unittest.TestCase):
@@ -47,6 +50,17 @@ class PublisherTests(unittest.TestCase):
         text = 'hello'
         result = publish(text, 'dummy', poster=lambda *a: self.fail('posted twice'), reader=lambda rkey: {'uri': 'existing', 'value': {'text': text}})
         self.assertEqual(result['status'], 'ALREADY_EXISTS')
+
+    def test_not_found_400_is_safe(self):
+        error = urllib.error.HTTPError("https://bsky.social/", 400, "error", {}, io.BytesIO(b'{"error":"RecordNotFound"}'))
+        with patch("urllib.request.urlopen", side_effect=error):
+            self.assertIsNone(get_record('key'))
+
+    def test_unexpected_400_is_not_ignored(self):
+        error = urllib.error.HTTPError("https://bsky.social/", 400, "error", {}, io.BytesIO(b'{"error":"InvalidRequest"}'))
+        with patch("urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(urllib.error.HTTPError):
+                get_record('key')
 
     def test_readback_mismatch_not_verified(self):
         def poster(endpoint, payload, bearer=None):
