@@ -1,0 +1,30 @@
+name: AI company - first Bluesky post (owner approval)
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'I reviewed content/first_post.txt and approve this public post'
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ai-company-first-post
+  cancel-in-progress: false
+jobs:
+  first-post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests (offline)
+        run: python -m unittest discover -s tests -v
+      - name: Check draft (never publishes)
+        run: python publish_bluesky.py
+      - name: Publish only after owner checks approval
+        if: ${{ inputs.publish }}
+        env:
+          FIRST_POST_APPROVED: 'YES'
+          BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
+        run: python publish_bluesky.py --publish
