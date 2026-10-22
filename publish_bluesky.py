@@ -46,8 +46,13 @@ def get_record(rkey):
         with urllib.request.urlopen(API + "com.atproto.repo.getRecord?" + query, timeout=20) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
-        if exc.code == 404:
-            return None
+        if exc.code in (400, 404):
+            try:
+                payload = json.loads(exc.read().decode("utf-8"))
+            except (ValueError, UnicodeError):
+                payload = {}
+            if payload.get("error") == "RecordNotFound":
+                return None
         raise
 
 
