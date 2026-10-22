@@ -1,0 +1,22 @@
+name: AI company - offline safety tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ai-company-tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  safety-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline tests (no secrets or posting)
+        run: python -m unittest discover -s tests -v
+      - name: Validate first draft without publishing
+        run: python publish_bluesky.py
